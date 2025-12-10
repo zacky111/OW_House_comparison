@@ -35,7 +35,7 @@ st.markdown(VISUAL_MD, unsafe_allow_html=True)
 st.title("Wsparcie wyboru mieszkania - OW")
 
 ## zakładki
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["Import danych", "Dane", "Dostosowania kryteriów", "", ""])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Import danych", "Dane", "Dostosowanie kryteriów", "", ""])
 
 # --- ZAKŁADKA 1: Import danych CSV ---
 with tab1:
@@ -50,7 +50,6 @@ with tab1:
 
             ## tutaj do dodania - data cleansing
             df = data_cleansing(df)
-
 
 
             st.session_state["data"] = df
@@ -79,7 +78,7 @@ with tab2:
     else:
         st.info("Brak danych do wyświetlenia. Przejdź do zakładki 'Import danych', aby załadować plik CSV.")
 
-# --- ZAKŁADKA 3: Dostosowania kryteriów ---
+# --- ZAKŁADKA 3: Dostosowanie kryteriów ---
 with tab3:
     pass
 
