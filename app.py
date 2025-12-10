@@ -100,6 +100,7 @@ with tab3:
             st.session_state["criteria_weights"]["Id"] = None
 
         st.write("Przesuń suwaki, aby nadać ważność (0.0 — 1.0) dla każdego kryterium:")
+        st.write("--------------------------------")
         
         # Wyświetl suwaki dla kryteriów (bez Id)
         for i, name in enumerate(criteria_cols):
@@ -120,10 +121,12 @@ with tab3:
                 st.success("Wagi zapisane do sesji.")
         with col2:
             if st.button("Przywróć domyślne wagi (0.5)"):
+                # Usuń wszystkie wagi z session_state
                 for i in range(n):
-                    st.session_state[f"weight_{i}"] = 0.5
-                st.session_state["criteria_weights"] = {criteria_cols[i]: 0.5 for i in range(n)}
-                st.session_state["criteria_weights"]["Id"] = None
+                    if f"weight_{i}" in st.session_state:
+                        del st.session_state[f"weight_{i}"]
+                if "criteria_weights" in st.session_state:
+                    del st.session_state["criteria_weights"]
                 st.rerun()
 
         # Pokaż aktualne wagi
