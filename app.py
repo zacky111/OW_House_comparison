@@ -80,7 +80,61 @@ with tab2:
 
 # --- ZAKŁADKA 3: Dostosowanie kryteriów ---
 with tab3:
-    pass
+    st.subheader("Nadaj ważność kryteriom")
+
+    df = st.session_state.get("data", pd.DataFrame())
+    if df.empty:
+        st.info("Brak załadowanych danych. Przejdź do zakładki 'Import danych' i wczytaj plik CSV.")
+    else:
+        all_cols = list(df.columns)
+        criteria_cols = [c for c in all_cols if c != "Id"]
+        n = len(criteria_cols)
+
+        # Domyślne wagi = 0.5 jeśli brak w sesji
+        if "criteria_weights" not in st.session_state:
+            for i, _ in enumerate(criteria_cols):
+                st.session_state.setdefault(f"weight_{i}", 0.5)
+            # Id ma wagę None
+            st.session_state.setdefault("weight_Id", None)
+            st.session_state["criteria_weights"] = {criteria_cols[i]: st.session_state[f"weight_{i}"] for i in range(n)}
+            st.session_state["criteria_weights"]["Id"] = None
+
+        st.write("Przesuń suwaki, aby nadać ważność (0.0 — 1.0) dla każdego kryterium:")
+        
+        # Wyświetl suwaki dla kryteriów (bez Id)
+        for i, name in enumerate(criteria_cols):
+            left, right = st.columns([1, 3])
+            with left:
+                st.markdown(f"**{name}**")
+            with right:
+                st.slider("", min_value=0.0, max_value=1.0,
+                          value=st.session_state.get(f"weight_{i}", 0.5),
+                          step=0.05, key=f"weight_{i}")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Zapisz wagi"):
+                weights = {criteria_cols[i]: st.session_state.get(f"weight_{i}", 0.5) for i in range(n)}
+                weights["Id"] = None
+                st.session_state["criteria_weights"] = weights
+                st.success("Wagi zapisane do sesji.")
+        with col2:
+            if st.button("Przywróć domyślne wagi (0.5)"):
+                for i in range(n):
+                    st.session_state[f"weight_{i}"] = 0.5
+                st.session_state["criteria_weights"] = {criteria_cols[i]: 0.5 for i in range(n)}
+                st.session_state["criteria_weights"]["Id"] = None
+                st.rerun()
+
+        # Pokaż aktualne wagi
+        st.write("Aktualne wagi:")
+        w_dict = st.session_state.get("criteria_weights", {})
+        display_data = [
+            {"Kryterium": name, "Waga": w_dict.get(name, None)} 
+            for name in all_cols if name != "Id"
+        ]
+        display_df = pd.DataFrame(display_data)
+        st.dataframe(display_df, use_container_width=True)
 
 # --- ZAKŁADKA 4: ---
 with tab4:
