@@ -35,7 +35,7 @@ st.markdown(VISUAL_MD, unsafe_allow_html=True)
 st.title("Wsparcie wyboru mieszkania - OW")
 
 ## zakładki
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["Import danych", "Dane", "Dostosowanie kryteriów", "", ""])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Import danych", "Dane", "Dostosowanie kryteriów", "Wybór algorytmu", "Wyniki"])
 
 # --- ZAKŁADKA 1: Import danych CSV ---
 with tab1:
