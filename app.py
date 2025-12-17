@@ -170,6 +170,21 @@ with tab3:
                     del st.session_state["criteria_weights"]
                 st.rerun()
 
+
+        ## Wybór preferencji
+        st.write("--------------------------------")
+        st.write("### Wybór preferencji dla kryteriów")
+
+        # Wybierz swój typ lokatora
+        loc_type = st.selectbox("Wybierz typ lokatora, najbardziej zbliżony do twoich oczekiwań:", ['Single', 'Couple', 'Family', 'Student', 'Retiree', 'Professional'])
+        st.session_state["locator_type"] = loc_type
+
+        # TO BE DONE:
+        # należy zmapować typ lokatora do tego, jakie dane z reviews mają być brane pod uwagę
+        # największa waga - średnia z komentarzy o tym samym typie lokatora (np. 50-60%)
+        # reszta - mniejsza waga, która nadale jest brana pod uwagę, ale mniejszy wpływ
+        
+
         # Pokaż aktualne wagi
         st.write("Aktualne wagi:")
         w_dict = st.session_state.get("criteria_weights", {})
