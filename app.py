@@ -11,6 +11,7 @@ from io import BytesIO
 from datetime import datetime
 import os
 import plotly.express as px
+from pathlib import Path
 
 
 # algorithms
@@ -68,15 +69,55 @@ with tab1:
 
     df = st.session_state.get("data", pd.DataFrame())
 
+
+    ## Import opinii lokatorów
+    st.markdown("#### Import opinii lokatorów (CSV)")
+    uploaded_reviews = st.file_uploader("Wybierz plik CSV z opiniami", type=["csv"], key="file_uploader_reviews")
+
+    if uploaded_reviews is not None:
+        try:
+            reviews_df = pd.read_csv(uploaded_reviews)
+            required_cols = ["ReviewId","HouseId","Developer","ReviewerType","Satisfaction","Noise","Neighbors","Maintenance","CommentScore","Date"]
+            if not set(required_cols).issubset(set(reviews_df.columns)):
+                st.error(f"Plik nie zawiera wymaganych kolumn: {', '.join(required_cols)}")
+            else:
+                st.session_state["reviews"] = reviews_df
+                st.success(f"Zaimportowano opinie: {reviews_df.shape[0]} wierszy x {reviews_df.shape[1]} kolumn")
+        except Exception as e:
+            st.error(f"Błąd podczas wczytywania opinii: {e}")
+
+    # opcja wczytania domyślnego wygenerowanego pliku opinii
+    default_reviews_path = Path(__file__).resolve().parent / "src" / "data" / "house_reviews.csv"
+    if st.button("Wczytaj domyślny plik opinii (src/data/house_reviews.csv)"):
+        if default_reviews_path.exists():
+            try:
+                rev = pd.read_csv(default_reviews_path)
+                st.session_state["reviews"] = rev
+                st.success(f"Wczytano domyślny plik opinii: {len(rev)} wierszy")
+            except Exception as e:
+                st.error(f"Błąd podczas wczytywania domyślnego pliku: {e}")
+        else:
+            st.error("Brak domyślnego pliku: src/data/house_reviews.csv")
+
+        df = st.session_state.get("data", pd.DataFrame())
+
 # --- ZAKŁADKA 2: Dane ---
 with tab2:
-    st.subheader("Dane")
     df = st.session_state.get("data", pd.DataFrame())
     if not df.empty:
-        st.write("### Podgląd danych")
+        st.write("### Podgląd danych - mieszkania")
         st.dataframe(df, use_container_width=True)
     else:
         st.info("Brak danych do wyświetlenia. Przejdź do zakładki 'Import danych', aby załadować plik CSV.")
+
+    df_reviews = st.session_state.get("reviews", pd.DataFrame())
+
+    if not df_reviews.empty:
+        st.write("### Podgląd danych - opinie lokatorów")
+        st.dataframe(df_reviews, use_container_width=True)
+    else:
+        st.info("Brak załadowanych opinii lokatorów.")
+    
 
 # --- ZAKŁADKA 3: Dostosowanie kryteriów ---
 with tab3:
