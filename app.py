@@ -35,6 +35,23 @@ st.markdown(VISUAL_MD, unsafe_allow_html=True)
 
 st.title("Wsparcie wyboru mieszkania - OW")
 
+def safe_rerun():
+    try:
+        st.experimental_rerun()
+    except AttributeError:
+        # spróbuj podnieść odpowiedni wyjątek dla starszych/innnth wersji streamlit
+        try:
+            from streamlit.runtime.scriptrunner import RerunException
+        except Exception:
+            try:
+                from streamlit.script_runner import RerunException
+            except Exception:
+                RerunException = None
+        if RerunException is not None:
+            raise RerunException()
+        else:
+            st.warning("Proszę odświeżyć stronę (F5), aby zastosować zmiany.")
+
 ## zakładki
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Import danych", "Dane", "Dostosowanie kryteriów", "Wybór algorytmu", "Wyniki"])
 
@@ -106,7 +123,7 @@ with tab2:
     df = st.session_state.get("data", pd.DataFrame())
     if not df.empty:
         st.write("### Podgląd danych - mieszkania")
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width="stretch")
     else:
         st.info("Brak danych do wyświetlenia. Przejdź do zakładki 'Import danych', aby załadować plik CSV.")
 
@@ -114,7 +131,7 @@ with tab2:
 
     if not df_reviews.empty:
         st.write("### Podgląd danych - opinie lokatorów")
-        st.dataframe(df_reviews, use_container_width=True)
+        st.dataframe(df_reviews, width="stretch")
     else:
         st.info("Brak załadowanych opinii lokatorów.")
     
@@ -149,26 +166,17 @@ with tab3:
             with left:
                 st.markdown(f"**{name}**")
             with right:
-                st.slider("", min_value=0.0, max_value=1.0,
-                          value=st.session_state.get(f"weight_{i}", 0.5),
-                          step=0.05, key=f"weight_{i}")
+                st.slider(
+                    label=f"Waga kryterium {name}",
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=st.session_state.get(f"weight_{i}", 0.5),
+                    step=0.05,
+                    key=f"weight_{i}",
+                    label_visibility="collapsed"
+                )
 
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Zapisz wagi"):
-                weights = {criteria_cols[i]: st.session_state.get(f"weight_{i}", 0.5) for i in range(n)}
-                weights["Id"] = None
-                st.session_state["criteria_weights"] = weights
-                st.success("Wagi zapisane do sesji.")
-        with col2:
-            if st.button("Przywróć domyślne wagi (0.5)"):
-                # Usuń wszystkie wagi z session_state
-                for i in range(n):
-                    if f"weight_{i}" in st.session_state:
-                        del st.session_state[f"weight_{i}"]
-                if "criteria_weights" in st.session_state:
-                    del st.session_state["criteria_weights"]
-                st.rerun()
+        
 
 
         ## Wybór preferencji
@@ -179,13 +187,40 @@ with tab3:
         loc_type = st.selectbox("Wybierz typ lokatora, najbardziej zbliżony do twoich oczekiwań:", ['Single', 'Couple', 'Family', 'Student', 'Retiree', 'Professional'])
         st.session_state["locator_type"] = loc_type
 
-        # TO BE DONE:
-        # należy zmapować typ lokatora do tego, jakie dane z reviews mają być brane pod uwagę
-        # największa waga - średnia z komentarzy o tym samym typie lokatora (np. 50-60%)
-        # reszta - mniejsza waga, która nadale jest brana pod uwagę, ale mniejszy wpływ
+        # Wybór developerów na podstawie załadowanych opinii
+        reviews_df = st.session_state.get("reviews", pd.DataFrame())
+        if not reviews_df.empty and "Developer" in reviews_df.columns:
+            devs = sorted(reviews_df["Developer"].dropna().unique().tolist())
+            selected_default = st.session_state.get("selected_developers", devs)
+            selected_devs = st.multiselect("Wybierz developerów, których opinie mają być brane pod uwagę:", options=devs, default=selected_default)
+            st.session_state["selected_developers"] = selected_devs
+
+
+            st.write("Wybrani developerzy:", ", ".join(selected_devs) if selected_devs else "Brak wybranych")
+        else:
+            st.info("Brak załadowanych opinii lub brak kolumny 'Developer' — nie można wybrać developerów.")
+
         
 
-        # Pokaż aktualne wagi
+    st.write("--------------------------------")
+    st.write("### Zatwierdzenie preferencji")
+
+    if st.button("Zatwierdź wszystkie preferencje"):
+        # zapis wag
+        weights = {criteria_cols[i]: st.session_state.get(f"weight_{i}", 0.5) for i in range(n)}
+        weights["Id"] = None
+        st.session_state["criteria_weights"] = weights
+
+        # zapis typu lokatora
+        st.session_state["locator_type"] = loc_type
+
+        # zapis developerów (już są w session_state, ale jawnie)
+        st.session_state["selected_developers"] = selected_devs if reviews_df is not None else []
+
+        st.success("Preferencje zapisane: wagi, typ lokatora oraz developerzy.")
+
+
+    # Pokaż aktualne wagi
         st.write("Aktualne wagi:")
         w_dict = st.session_state.get("criteria_weights", {})
         display_data = [
@@ -193,7 +228,8 @@ with tab3:
             for name in all_cols if name != "Id"
         ]
         display_df = pd.DataFrame(display_data)
-        st.dataframe(display_df, use_container_width=True)
+        st.dataframe(display_df, width="stretch")
+
 
 # --- ZAKŁADKA 4: ---
 with tab4:
