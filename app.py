@@ -30,7 +30,7 @@ algorithms = {
 }
 
 
-st.set_page_config(page_title="Wsparcie wyboru mieszkania - OW", layout="wide")
+st.set_page_config(page_title="Wsparcie wyboru mieszkania - OW", layout="wide", page_icon=":red_circle:")
 st.markdown(VISUAL_MD, unsafe_allow_html=True)
 
 st.title("Wsparcie wyboru mieszkania - OW")
