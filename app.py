@@ -320,13 +320,12 @@ elif active_tab == "Wybór algorytmu":
                     # pobierz wagi z sesji i dopasuj do kolejności numeric_cols
                     weights_map = st.session_state.get("criteria_weights", {})
                     weights = [float(weights_map.get(col, 1.0)) for col in numeric_cols]
-                    # jeśli wszystkie wagi 0 -> zastąp None (algorytm zinterpretuje)
                     if sum(weights) == 0:
                         weights = None
 
+                    # uruchom algorytm i zapisz wyniki do st.session_state (persist)
                     try:
-                        results = alg_func(X.values, weights=weights)  # algorytm powinien przyjmować macierz 2D + weights
-                        # results to lista (idx, score) - dopasuj do Id jeśli istnieje
+                        results = alg_func(X.values, weights=weights)
                         res_rows = []
                         for idx, score in results[:top_n]:
                             row_id = int(alg_df.iloc[idx]["Id"]) if "Id" in alg_df.columns else idx
@@ -338,49 +337,52 @@ elif active_tab == "Wybór algorytmu":
                         st.success("Algorytm wykonany i zapisany w st.session_state['alg_results'].")
                     except Exception as e:
                         st.error(f"Błąd podczas wykonywania algorytmu: {e}")
-                        
-                        # -- interaktywny wybór rekordu do podglądu (persist via session_state) --
+
+                    # Pobierz wyniki z session_state (bez względu na to, czy był rerun)
+                    res_df = st.session_state.get("alg_results", pd.DataFrame())
+                    if res_df.empty:
+                        st.info("Brak wyników do wyświetlenia. Uruchom algorytm.")
+                    else:
+                        # interaktywny wybór rekordu (persist via session_state)
                         options = [f"{i+1}. Id {int(r['Id'])} — score {float(r['score']):.3f}" for i, r in res_df.reset_index(drop=True).iterrows()]
-                        if options:
-                            sel = st.selectbox("Wybierz wynik, aby zobaczyć szczegóły:", options, index=0)
-                            sel_idx = options.index(sel)
-                            sel_row = res_df.reset_index(drop=True).iloc[sel_idx]
-                            st.session_state["show_house_id"] = int(sel_row["Id"])
-                    
+                        sel = st.selectbox("Wybierz wynik, aby zobaczyć szczegóły:", options, index=0, key="alg_results_select")
+                        sel_idx = options.index(sel)
+                        sel_row = res_df.reset_index(drop=True).iloc[sel_idx]
+                        st.session_state["show_house_id"] = int(sel_row["Id"])
 
-                    # dodatkowo: przyciski "Pokaż" dla każdego wiersza (ustawiają ID w session_state)
-                    st.write("Szybki podgląd (przyciski):")
-                    for _, r in res_df.reset_index(drop=True).iterrows():
-                        cols = st.columns([6,1])
-                        cols[0].write(f"Id {int(r['Id'])} — score {float(r['score']):.3f}")
-                        if cols[1].button("Pokaż", key=f"show_{int(r['Id'])}"):
-                            st.session_state["show_house_id"] = int(r["Id"])
+                        # szybki podgląd (przyciski) — ustawiają show_house_id w session_state
+                        st.write("Szybki podgląd (przyciski):")
+                        for _, r in res_df.reset_index(drop=True).iterrows():
+                            cols = st.columns([6,1])
+                            cols[0].write(f"Id {int(r['Id'])} — score {float(r['score']):.3f}")
+                            if cols[1].button("Pokaż", key=f"show_{int(r['Id'])}"):
+                                st.session_state["show_house_id"] = int(r["Id"])
 
-                    # jeśli jest wybrane ID w session_state — pokaż szczegóły (przetrwa rerun)
-                    if st.session_state.get("show_house_id") is not None:
-                        hid = st.session_state["show_house_id"]
-                        house_rows = alg_df[alg_df["Id"] == hid]
-                        if not house_rows.empty:
-                            house = house_rows.iloc[0]
-                            show_cols = ["Id","Area","Bedrooms","Bathrooms","Floors","YearBuilt","Location","Condition","Garage","Price","criteria_score","review_score","Developer"]
-                            available = [c for c in show_cols if c in alg_df.columns]
-                            val_df = house[available].to_frame(name="Wartość").reset_index().rename(columns={"index":"Kryterium"})
-                            # zamień wartości na string, by uniknąć błędów konwersji PyArrow
-                            val_df["Wartość"] = val_df["Wartość"].astype(str)
-                            st.expander(f"Szczegóły mieszkania Id {hid}", expanded=True)
-                            st.table(val_df.set_index("Kryterium"))
+                        # jeśli jest wybrane ID w session_state — pokaż szczegóły (przetrwa rerun)
+                        if st.session_state.get("show_house_id") is not None:
+                            hid = st.session_state["show_house_id"]
+                            house_rows = alg_df[alg_df["Id"] == hid]
+                            if not house_rows.empty:
+                                house = house_rows.iloc[0]
+                                show_cols = ["Id","Area","Bedrooms","Bathrooms","Floors","YearBuilt","Location","Condition","Garage","Price","criteria_score","review_score","Developer"]
+                                available = [c for c in show_cols if c in alg_df.columns]
+                                val_df = house[available].to_frame(name="Wartość").reset_index().rename(columns={"index":"Kryterium"})
+                                # konwertuj na string, by uniknąć problemów z Arrow (pyarrow)
+                                val_df["Wartość"] = val_df["Wartość"].astype(str)
+                                st.expander(f"Szczegóły mieszkania Id {hid}", expanded=True)
+                                st.table(val_df.set_index("Kryterium"))
 
-                            # pokaż opinie dla mieszkania (jeśli są)
-                            reviews_df = st.session_state.get("reviews", pd.DataFrame())
-                            if not reviews_df.empty and "HouseId" in reviews_df.columns:
-                                house_reviews = reviews_df[reviews_df["HouseId"] == hid]
-                                if not house_reviews.empty:
-                                    st.write("Opinie dla tego mieszkania:")
-                                    st.dataframe(house_reviews[["ReviewId","ReviewerType","Satisfaction","Noise","Neighbors","Maintenance","CommentScore","Date"]], width="stretch")
-                                else:
-                                    st.info("Brak opinii dla wybranego mieszkania.")
-                        else:
-                            st.info("Wybrane mieszkanie nie istnieje w aktualnym DF.")
+                                # pokaż opinie dla mieszkania (jeśli są)
+                                reviews_df = st.session_state.get("reviews", pd.DataFrame())
+                                if not reviews_df.empty and "HouseId" in reviews_df.columns:
+                                    house_reviews = reviews_df[reviews_df["HouseId"] == hid]
+                                    if not house_reviews.empty:
+                                        st.write("Opinie dla tego mieszkania:")
+                                        st.dataframe(house_reviews[["ReviewId","ReviewerType","Satisfaction","Noise","Neighbors","Maintenance","CommentScore","Date"]], width="stretch")
+                                    else:
+                                        st.info("Brak opinii dla wybranego mieszkania.")
+                            else:
+                                st.info("Wybrane mieszkanie nie istnieje w aktualnym DF.")
 
 
 
