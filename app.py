@@ -52,11 +52,11 @@ def safe_rerun():
         else:
             st.warning("Proszę odświeżyć stronę (F5), aby zastosować zmiany.")
 
-## zakładki (radio zamiast tabs — utrzymuje wybór między rerunami)
+
 tabs = ["Import danych", "Dane", "Dostosowanie kryteriów", "Wybór algorytmu", "Wyniki"]
 if "active_tab" not in st.session_state:
     st.session_state["active_tab"] = tabs[0]
-active_tab = st.radio("Zakładki", tabs, index=tabs.index(st.session_state["active_tab"]), key="main_tab_radio", horizontal=True)
+active_tab = st.radio("", tabs, index=tabs.index(st.session_state["active_tab"]), key="main_tab_radio", horizontal=True)
 st.session_state["active_tab"] = active_tab
 
 # mapuj poprzednie bloki 'with tabX' na warunki:
