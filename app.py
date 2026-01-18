@@ -311,98 +311,127 @@ elif active_tab == "Dostosowanie kryteriów":
 elif active_tab == "Wybór algorytmu":
     # --- ZAKŁADKA 4: Wybór i uruchomienie algorytmu ---
     with st.expander("Wybierz i uruchom algorytm", expanded=True):
+
         alg_choice = st.selectbox("Algorytm:", options=list(algorithms.keys()))
         alg_func = algorithms[alg_choice]
 
-        # Preferowane wejście: finalny DF przygotowany w expanderze i zapisany do st.session_state["alg_input_df"]
-        alg_df = st.session_state.get("alg_input_df", st.session_state.get("data", pd.DataFrame()))
+        alg_df = st.session_state.get(
+            "alg_input_df",
+            st.session_state.get("data", pd.DataFrame())
+        )
 
         if alg_df.empty:
-            st.info("Brak przygotowanego DataFrame dla algorytmów. W zakładce 'Dostosowanie kryteriów' -> expander: utwórz i zapisz finalny DF.")
-        else:
-            st.write(f"Liczba rekordów dostępnych dla algorytmu: {len(alg_df)}")
+            st.info("Brak danych wejściowych dla algorytmu.")
+            st.stop()
 
-            # kryteria - kolumny numeryczne automatycznie
-            numeric_cols = [c for c in alg_df.columns if pd.api.types.is_numeric_dtype(alg_df[c]) and c != "Id"]
-            st.write("Kryteria (numeryczne) użyte do obliczeń:", ", ".join(numeric_cols) if numeric_cols else "Brak kryteriów numerycznych")
+        # kolumny numeryczne
+        numeric_cols = [
+            c for c in alg_df.columns
+            if pd.api.types.is_numeric_dtype(alg_df[c]) and c != "Id"
+        ]
 
-            top_n = st.number_input("Pokaż top N wyników", min_value=1, max_value=max(1, len(alg_df)), value=min(10, len(alg_df)), step=1)
+        if not numeric_cols:
+            st.error("Brak kryteriów numerycznych.")
+            st.stop()
 
-            if st.button("Uruchom algorytm"):
-                if alg_choice == "Algorytm 2":
-                    st.warning("Wybrany algorytm nie jest jeszcze zaimplementowany.")
-                else:
-                    # przygotuj macierz wejściową (wypełnij NaN średnią kolumny)
-                    X = alg_df[numeric_cols].copy()
-                    if X.isna().any().any():
-                        X = X.fillna(X.mean())
+        st.write("Kryteria użyte w algorytmie:", ", ".join(numeric_cols))
 
-                    # pobierz wagi z sesji i dopasuj do kolejności numeric_cols
-                    weights_map = st.session_state.get("criteria_weights", {})
-                    weights = [float(weights_map.get(col, 1.0)) for col in numeric_cols]
-                    if sum(weights) == 0:
-                        weights = None
+        top_n = st.number_input(
+            "Pokaż top N wyników",
+            min_value=1,
+            max_value=len(alg_df),
+            value=min(10, len(alg_df)),
+            step=1
+        )
 
-                    # uruchom algorytm i zapisz wyniki do st.session_state (persist)
-                    try:
-                        results = alg_func(X.values, weights=weights)
-                        res_rows = []
-                        for idx, score in results[:top_n]:
-                            row_id = int(alg_df.iloc[idx]["Id"]) if "Id" in alg_df.columns else idx
-                            res_rows.append({"Id": row_id, "df_index": alg_df.index[idx], "score": score})
-                        res_df = pd.DataFrame(res_rows)
-                        st.write(f"Wyniki dla: {alg_choice}")
-                        st.dataframe(res_df, width="stretch")
-                        st.session_state["alg_results"] = res_df
-                        st.success("Algorytm wykonany i zapisany w st.session_state['alg_results'].")
-                    except Exception as e:
-                        st.error(f"Błąd podczas wykonywania algorytmu: {e}")
+        # =============================
+        # PRZYCISK – TYLKO LICZENIE
+        # =============================
+        if st.button("Uruchom algorytm"):
+            try:
+                X = alg_df[numeric_cols].copy()
+                if X.isna().any().any():
+                    X = X.fillna(X.mean())
 
-                    # Pobierz wyniki z session_state (bez względu na to, czy był rerun)
-                    res_df = st.session_state.get("alg_results", pd.DataFrame())
-                    if res_df.empty:
-                        st.info("Brak wyników do wyświetlenia. Uruchom algorytm.")
+                weights_map = st.session_state.get("criteria_weights", {})
+                weights = [float(weights_map.get(c, 1.0)) for c in numeric_cols]
+                if sum(weights) == 0:
+                    weights = None
+
+                results = alg_func(X.values, weights=weights)
+
+                res_rows = []
+                for idx, score in results[:top_n]:
+                    row_id = int(alg_df.iloc[idx]["Id"]) if "Id" in alg_df.columns else idx
+                    res_rows.append({
+                        "Id": row_id,
+                        "df_index": alg_df.index[idx],
+                        "score": float(score)
+                    })
+
+                st.session_state["alg_results"] = pd.DataFrame(res_rows)
+                st.session_state["show_house_id"] = None
+                st.success("Algorytm wykonany.")
+
+            except Exception as e:
+                st.error(f"Błąd algorytmu: {e}")
+
+        # ==================================
+        # WYŚWIETLANIE WYNIKÓW (PERSIST)
+        # ==================================
+        res_df = st.session_state.get("alg_results", pd.DataFrame())
+
+        if res_df.empty:
+            st.info("Brak wyników — uruchom algorytm.")
+            st.stop()
+
+        st.write("### Wyniki algorytmu")
+        st.dataframe(res_df, width="stretch")
+
+        st.write("### 🏆 Ranking mieszkań (szczegóły)")
+
+        for i, row in res_df.iterrows():
+            hid = int(row["Id"])
+            score = float(row["score"])
+
+            with st.expander(f"{i+1}. Mieszkanie Id {hid} — score {score:.3f}", expanded=False):
+
+                house_rows = alg_df[alg_df["Id"] == hid]
+                if house_rows.empty:
+                    st.warning("Brak danych mieszkania.")
+                    continue
+
+                house = house_rows.iloc[0]
+
+                show_cols = [
+                    "Area","Bedrooms","Bathrooms","Floors","YearBuilt",
+                    "Location","Condition","Garage","Price",
+                    "criteria_score","review_score","Developer"
+                ]
+                available = [c for c in show_cols if c in alg_df.columns]
+
+                details_df = (
+                    house[available]
+                    .astype(str)
+                    .to_frame("Wartość")
+                    .reset_index()
+                    .rename(columns={"index": "Kryterium"})
+                )
+
+                st.table(details_df.set_index("Kryterium"))
+
+                # opinie lokatorów
+                reviews_df = st.session_state.get("reviews", pd.DataFrame())
+                if not reviews_df.empty and "HouseId" in reviews_df.columns:
+                    house_reviews = reviews_df[reviews_df["HouseId"] == hid]
+                    if not house_reviews.empty:
+                        st.write("### Opinie lokatorów")
+                        st.dataframe(
+                            house_reviews[
+                                ["ReviewerType","Satisfaction","Noise",
+                                "Neighbors","Maintenance","CommentScore","Date"]
+                            ],
+                            width="stretch"
+                        )
                     else:
-                        # interaktywny wybór rekordu (persist via session_state)
-                        options = [f"{i+1}. Id {int(r['Id'])} — score {float(r['score']):.3f}" for i, r in res_df.reset_index(drop=True).iterrows()]
-                        sel = st.selectbox("Wybierz wynik, aby zobaczyć szczegóły:", options, index=0, key="alg_results_select")
-                        sel_idx = options.index(sel)
-                        sel_row = res_df.reset_index(drop=True).iloc[sel_idx]
-                        st.session_state["show_house_id"] = int(sel_row["Id"])
-
-                        # szybki podgląd (przyciski) — ustawiają show_house_id w session_state
-                        st.write("Szybki podgląd (przyciski):")
-                        for _, r in res_df.reset_index(drop=True).iterrows():
-                            cols = st.columns([6,1])
-                            cols[0].write(f"Id {int(r['Id'])} — score {float(r['score']):.3f}")
-                            if cols[1].button("Pokaż", key=f"show_{int(r['Id'])}"):
-                                st.session_state["show_house_id"] = int(r["Id"])
-
-                        # jeśli jest wybrane ID w session_state — pokaż szczegóły (przetrwa rerun)
-                        if st.session_state.get("show_house_id") is not None:
-                            hid = st.session_state["show_house_id"]
-                            house_rows = alg_df[alg_df["Id"] == hid]
-                            if not house_rows.empty:
-                                house = house_rows.iloc[0]
-                                show_cols = ["Id","Area","Bedrooms","Bathrooms","Floors","YearBuilt","Location","Condition","Garage","Price","criteria_score","review_score","Developer"]
-                                available = [c for c in show_cols if c in alg_df.columns]
-                                val_df = house[available].to_frame(name="Wartość").reset_index().rename(columns={"index":"Kryterium"})
-                                # konwertuj na string, by uniknąć problemów z Arrow (pyarrow)
-                                val_df["Wartość"] = val_df["Wartość"].astype(str)
-                                st.expander(f"Szczegóły mieszkania Id {hid}", expanded=True)
-                                st.table(val_df.set_index("Kryterium"))
-
-                                # pokaż opinie dla mieszkania (jeśli są)
-                                reviews_df = st.session_state.get("reviews", pd.DataFrame())
-                                if not reviews_df.empty and "HouseId" in reviews_df.columns:
-                                    house_reviews = reviews_df[reviews_df["HouseId"] == hid]
-                                    if not house_reviews.empty:
-                                        st.write("Opinie dla tego mieszkania:")
-                                        st.dataframe(house_reviews[["ReviewId","ReviewerType","Satisfaction","Noise","Neighbors","Maintenance","CommentScore","Date"]], width="stretch")
-                                    else:
-                                        st.info("Brak opinii dla wybranego mieszkania.")
-                            else:
-                                st.info("Wybrane mieszkanie nie istnieje w aktualnym DF.")
-
-
-
+                        st.info("Brak opinii dla tego mieszkania.")
