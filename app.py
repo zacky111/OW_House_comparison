@@ -386,7 +386,10 @@ elif active_tab == "Wybór algorytmu":
             st.stop()
 
         st.write("### Wyniki algorytmu")
-        st.dataframe(res_df, width="stretch")
+        st.dataframe(
+            res_df.drop(columns=["df_index"], errors="ignore"),
+            width="stretch"
+            )
 
         st.write("### 🏆 Ranking mieszkań (szczegóły)")
 
