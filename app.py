@@ -16,7 +16,7 @@ from pathlib import Path
 
 # algorithms
 from src.alg.alg1 import calculate_topsis_score
-from src.alg.alg2 import alg2
+from src.alg.alg2 import RSM_alg
 
 # data operations
 from src.alg.data_cleansing import data_cleansing
@@ -26,7 +26,7 @@ from visual import VISUAL_MD
 
 algorithms = {
     "Algorytm TOPSIS": calculate_topsis_score,
-    "Algorytm 2": alg2,
+    "Algorytm RSM": RSM_alg,
 }
 
 
