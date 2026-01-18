@@ -20,6 +20,7 @@ from src.alg.alg2 import RSM_alg
 
 # data operations
 from src.alg.data_cleansing import data_cleansing
+from src.util import apply_criteria_directions
 
 # visual
 from visual import VISUAL_MD
@@ -205,10 +206,10 @@ elif active_tab == "Dostosowanie kryteriów":
             
             # Wyświetl suwaki dla kryteriów (bez Id)
             for i, name in enumerate(criteria_cols):
-                left, right = st.columns([1, 3])
+                left, middle, right = st.columns([2,2, 0.5])
                 with left:
                     st.markdown(f"**{name}**")
-                with right:
+                with middle:
                     st.slider(
                         label=f"Waga kryterium {name}",
                         min_value=0.0,
@@ -217,8 +218,14 @@ elif active_tab == "Dostosowanie kryteriów":
                         key=f"weight_{i}",
                         label_visibility="collapsed"
                     )
-
-            
+                with right:
+                    direction = st.selectbox(
+                        "Kierunek",
+                        ["max", "min"],
+                        index=0,
+                        key=f"dir_{name}",
+                        label_visibility="collapsed"
+        )
 
 
             ## Wybór preferencji
@@ -267,6 +274,30 @@ elif active_tab == "Dostosowanie kryteriów":
             weights = {criteria_cols[i]: st.session_state.get(f"weight_{i}", 0.5) for i in range(n)}
             weights["Id"] = None
             st.session_state["criteria_weights"] = weights
+
+            # =========================
+            # 2. ZAPIS KIERUNKÓW
+            # =========================
+            criteria_directions = {
+                name: st.session_state.get(f"dir_{name}", "max")
+                for name in criteria_cols
+            }
+            st.session_state["criteria_directions"] = criteria_directions
+
+            df_alg = df.copy()
+
+            df_alg[criteria_cols] = apply_criteria_directions(
+                df_alg[criteria_cols],
+                {
+                    c: {"direction": criteria_directions[c]}
+                    for c in criteria_cols
+                }
+            )
+
+            st.session_state["alg_input_df"] = df_alg
+
+
+
             # zapis typu lokatora
             st.session_state["locator_type"] = loc_type
             st.session_state["locator_description"] = locator_descriptions.get(loc_type, "")
