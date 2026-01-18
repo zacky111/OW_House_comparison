@@ -213,7 +213,6 @@ elif active_tab == "Dostosowanie kryteriów":
                         label=f"Waga kryterium {name}",
                         min_value=0.0,
                         max_value=1.0,
-                        value=st.session_state.get(f"weight_{i}", 0.5),
                         step=0.05,
                         key=f"weight_{i}",
                         label_visibility="collapsed"
@@ -287,6 +286,27 @@ elif active_tab == "Dostosowanie kryteriów":
             ]
             display_df = pd.DataFrame(display_data)
             st.dataframe(display_df, width="stretch")
+
+        # typ lokatora
+            loc_type = st.session_state.get("locator_type")
+            loc_desc = st.session_state.get("locator_description")
+            if loc_type:
+                st.markdown("### Typ lokatora")
+                st.write(f"**{loc_type}**")
+                if loc_desc:
+                    st.info(loc_desc)
+            else:
+                st.warning("Nie wybrano typu lokatora.")
+
+            # Wybrani developerzy
+            selected_devs = st.session_state.get("selected_developers", [])
+
+            st.markdown("### Wybrani developerzy")
+            if selected_devs:
+                st.write(", ".join(selected_devs))
+            else:
+                st.warning("Nie wybrano żadnych developerów.")
+
 
 elif active_tab == "Wybór algorytmu":
     # --- ZAKŁADKA 4: Wybór i uruchomienie algorytmu ---
