@@ -203,8 +203,34 @@ elif active_tab == "Dostosowanie kryteriów":
 
             st.write("Przesuń suwaki, aby nadać ważność (0.0 — 1.0) dla każdego kryterium:")
             st.write("--------------------------------")
+
+            suggested_directions = {
+                "Area": "max",
+                "Bedrooms": "max",
+                "Bathrooms": "max",
+                "Floors": "max",
+                "YearBuilt": "max",
+                "Location": "max",
+                "Condition": "max",
+                "Garage": "max",
+                "Price": "min",
+                "Developer": "max",
+            }
             
-            # Wyświetl suwaki dla kryteriów (bez Id)
+            suggested_directions_meaning={
+                "Area": "Dla max, większy metraż jest lepszy",
+                "Bedrooms": "Dla max, więcej sypialni jest lepsze",
+                "Bathrooms": "Dla max, więcej łazienek jest lepsze",
+                "Floors": "Dla max, więcej pięter jest lepsze",
+                "YearBuilt": "Dla max, nowszy rok budowy jest lepszy",
+                "Location": "Dla max, lepsza lokalizacja jest lepsza",
+                "Condition": "Dla max, lepszy stan techniczny jest lepszy",
+                "Garage": "Dla max, więcej miejsc parkingowych jest lepsze",
+                "Price": "Dla min, niższa cena jest lepsza",
+                "Developer": "Dla max, lepszy deweloper jest lepszy",
+            }
+
+            # Wyświetl suwaki dla kryteriów (bez Id) oraz wybór kierunku (min/max)
             for i, name in enumerate(criteria_cols):
                 left, middle, right = st.columns([2,2, 0.5])
                 with left:
@@ -224,8 +250,16 @@ elif active_tab == "Dostosowanie kryteriów":
                         ["max", "min"],
                         index=0,
                         key=f"dir_{name}",
-                        label_visibility="collapsed"
+                        label_visibility="collapsed",
+                        help=f"Zaznacz 'max', jeśli wyższe wartości są lepsze dla kryterium '{name}'. Zaznacz 'min', jeśli niższe wartości są lepsze."
         )
+                # wytłumaczenie sugerowanego kierunku dla tego kryterium
+                suggested = suggested_directions.get(name)
+                if suggested:
+                    st.caption(f"Sugerowany kierunek dla '{name}': **{suggested}**")
+                meaning = suggested_directions_meaning.get(name, "")
+                if meaning:
+                    st.caption(f"{meaning}.")
 
 
             ## Wybór preferencji
