@@ -53,7 +53,7 @@ def safe_rerun():
             st.warning("Proszę odświeżyć stronę (F5), aby zastosować zmiany.")
 
 
-tabs = ["Import danych", "Dane", "Dostosowanie kryteriów", "Wybór algorytmu", "Wyniki"]
+tabs = ["Import danych", "Dane", "Dostosowanie kryteriów", "Wybór algorytmu"]
 if "active_tab" not in st.session_state:
     st.session_state["active_tab"] = tabs[0]
 active_tab = st.radio("", tabs, index=tabs.index(st.session_state["active_tab"]), key="main_tab_radio", horizontal=True)
