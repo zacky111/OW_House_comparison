@@ -1,5 +1,7 @@
 import numpy as np
 
+## Algorytm RSM (Reference Set Method) do wielokryterialnej analizy decyzyjnej
+
 
 def _normalize(matrix, method="range"):
     """

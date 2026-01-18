@@ -1,5 +1,8 @@
 import numpy as np
 
+## Algorytm TOPSIS (Technique for Order Preference by Similarity to Ideal Solution)
+
+
 def _normalize(matrix, norm='l2'):
     """Normalize columns of matrix. Returns normalized matrix (same shape)."""
     X = np.asarray(matrix, dtype=float)
